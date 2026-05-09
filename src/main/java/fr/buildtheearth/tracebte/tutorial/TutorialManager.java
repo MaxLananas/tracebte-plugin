@@ -6,7 +6,6 @@ import fr.buildtheearth.tracebte.util.Geometry;
 import fr.buildtheearth.tracebte.util.Msg;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -137,21 +136,14 @@ public final class TutorialManager {
         }
     }
 
-    public void onBlockPlace(Player player, Location location) {
+    public boolean onBlockDetected(Player player, Location location) {
         TutorialSession session = sessions.get(player.getUniqueId());
-        if (session == null || session.getStep() != TutorialStep.PLACING_CORNERS) return;
+        if (session == null || session.getStep() != TutorialStep.PLACING_CORNERS) return false;
 
         int cornerIndex = Geometry.findNearestCorner(location, CORNERS, CORNER_TOLERANCE);
+        if (cornerIndex == -1) return false;
 
-        if (cornerIndex == -1) {
-            Msg.warn(player, "Ce coin n'est pas reconnu — téléporte-toi d'abord avec <color:#FFB347>/tpll</color>.");
-            return;
-        }
-
-        if (session.getValidatedCorners().contains(cornerIndex)) {
-            Msg.tip(player, "Ce coin est déjà validé.");
-            return;
-        }
+        if (session.getValidatedCorners().contains(cornerIndex)) return true;
 
         session.getValidatedCorners().add(cornerIndex);
 
@@ -167,10 +159,12 @@ public final class TutorialManager {
                 Msg.tip(player, "C'est la base du traçage BTE — pas de triche possible sur le vrai serveur.");
                 Msg.blank(player);
                 resetCorners(player, session);
-                return;
+                return true;
             }
             advanceToLines(player, session);
         }
+
+        return true;
     }
 
     private void advanceToLines(Player player, TutorialSession session) {
