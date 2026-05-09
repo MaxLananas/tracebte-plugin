@@ -1,0 +1,14 @@
+name: TraceBTE
+version: ${version}
+main: fr.buildtheearth.tracebte.TraceBTE
+api-version: '1.21'
+authors: [ MaxLananas ]
+description: Tutoriel interactif de traçage pour BuildTheEarth France.
+
+commands:
+  tuto:
+    description: Lance le tutoriel interactif de traçage BTE.
+    usage: /tuto
+
+softdepend:
+  - FastAsyncWorldEdit
