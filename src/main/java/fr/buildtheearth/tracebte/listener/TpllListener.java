@@ -3,8 +3,6 @@ package fr.buildtheearth.tracebte.listener;
 import fr.buildtheearth.tracebte.tutorial.TutorialManager;
 import fr.buildtheearth.tracebte.tutorial.TutorialSession;
 import fr.buildtheearth.tracebte.tutorial.TutorialStep;
-import fr.buildtheearth.tracebte.util.Msg;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -36,10 +34,17 @@ public final class TpllListener implements Listener {
     public void onCommandPreprocess(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
         TutorialSession session = manager.getSession(player);
-        if (session == null || session.getStep() != TutorialStep.PLACING_CORNERS) return;
+        if (session == null) return;
 
-        if (event.getMessage().strip().toLowerCase().startsWith("/tpll")) {
+        String raw = event.getMessage().strip().toLowerCase();
+
+        if (session.getStep() == TutorialStep.PLACING_CORNERS && raw.startsWith("/tpll")) {
             pendingTpll.put(player.getUniqueId(), true);
+            return;
+        }
+
+        if (session.getStep() == TutorialStep.DRAWING_LINES && raw.startsWith("//line")) {
+            manager.onLineCommand(player);
         }
     }
 
@@ -55,7 +60,6 @@ public final class TpllListener implements Listener {
 
         Location destination = event.getTo();
         manager.onTpll(player, destination);
-
         scheduleBlockScan(player, destination);
     }
 
@@ -66,19 +70,12 @@ public final class TpllListener implements Listener {
             @Override
             public void run() {
                 ticks += 10;
-
                 TutorialSession session = manager.getSession(player);
                 if (session == null || session.getStep() != TutorialStep.PLACING_CORNERS) {
                     cancel();
                     return;
                 }
-
-                if (scanForRedWool(player, arrival)) {
-                    cancel();
-                    return;
-                }
-
-                if (ticks >= 600) {
+                if (scanForRedWool(player, arrival) || ticks >= 600) {
                     cancel();
                 }
             }
@@ -98,9 +95,7 @@ public final class TpllListener implements Listener {
                 for (int dy = -1; dy <= 2; dy++) {
                     Block block = arrival.getWorld().getBlockAt(cx + dx, cy + dy, cz + dz);
                     if (block.getType() == Material.RED_WOOL) {
-                        Location blockLoc = block.getLocation();
-                        boolean placed = manager.onBlockDetected(player, blockLoc);
-                        if (placed) return true;
+                        return manager.onBlockDetected(player, block.getLocation());
                     }
                 }
             }
