@@ -6,6 +6,7 @@ import fr.buildtheearth.tracebte.util.Geometry;
 import fr.buildtheearth.tracebte.util.Msg;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -32,6 +33,13 @@ public final class TutorialManager {
     public static final double   TPLL_ZONE_RADIUS = 40.0;
     public static final double   ZONE_CENTER_X    = 2415347.0;
     public static final double   ZONE_CENTER_Z    = -4650901.0;
+
+    private static final double CLEANUP_MIN_X = 2415325.0;
+    private static final double CLEANUP_MAX_X = 2415370.0;
+    private static final double CLEANUP_MIN_Z = -4650925.0;
+    private static final double CLEANUP_MAX_Z = -4650880.0;
+    private static final int    CLEANUP_MIN_Y = 38;
+    private static final int    CLEANUP_MAX_Y = 60;
 
     private final TraceBTE plugin;
     private final Map<UUID, TutorialSession> sessions      = new HashMap<>();
@@ -68,6 +76,7 @@ public final class TutorialManager {
             Msg.warn(player, "Tu n'es pas en train de faire le tutoriel.");
             return;
         }
+        cleanupZone(player);
         removeSession(player);
         Msg.blank(player);
         Msg.info(player, "Tutoriel interrompu. Tape <color:#FFB347>/tuto</color> pour recommencer.");
@@ -143,6 +152,8 @@ public final class TutorialManager {
         int cornerIndex = Geometry.findNearestCorner(location, CORNERS, CORNER_TOLERANCE);
         if (cornerIndex == -1) return false;
 
+        session.getPlacedBlocks().add(location);
+
         if (session.getValidatedCorners().contains(cornerIndex)) return true;
 
         session.getValidatedCorners().add(cornerIndex);
@@ -167,24 +178,49 @@ public final class TutorialManager {
         return true;
     }
 
+    public void onLineCommand(Player player) {
+        TutorialSession session = sessions.get(player.getUniqueId());
+        if (session == null || session.getStep() != TutorialStep.DRAWING_LINES) return;
+
+        session.incrementLine();
+
+        int done = session.getLineCount();
+        int total = 4;
+
+        Msg.blank(player);
+        Msg.success(player, "Segment tracé !");
+        Msg.lineProgress(player, done, total);
+        Msg.blank(player);
+
+        if (done >= total) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                TutorialSession s = sessions.get(player.getUniqueId());
+                if (s == null || s.getStep() != TutorialStep.DRAWING_LINES) return;
+                advanceToStack(player, s);
+            }, 10L);
+        }
+    }
+
     private void advanceToLines(Player player, TutorialSession session) {
         stopParticles(player);
         session.setStep(TutorialStep.DRAWING_LINES);
 
+        BukkitTask task = ParticleDisplay.spawnEdgesLoop(plugin, player, CORNERS);
+        particleTasks.put(player.getUniqueId(), task);
+
         Msg.header(player, "Étape 2 · Relier les points");
         Msg.immersive(player, "Bravo pour ce tracé. Maintenant relie les points avec //line red afin de créer des lignes parfaitement droites.");
         Msg.blank(player);
-        Msg.info(player, "Sélectionne deux coins consécutifs avec ta hache WorldEdit.");
+        Msg.info(player, "Les particules <color:#FF4444>rouges</color> montrent les <color:#EEEEEE>4 segments</color> à tracer.");
+        Msg.blank(player);
+        Msg.step(player, 1, 2, "Sélectionne deux coins consécutifs avec ta hache WorldEdit.");
         Msg.tip(player, "Clic gauche = premier point  ·  Clic droit = second point");
-        Msg.info(player, "Puis tape <color:#FFB347>//line red</color> pour tracer le segment.");
-        Msg.info(player, "Répète pour les <color:#EEEEEE>4 côtés</color> du rectangle.");
+        Msg.step(player, 2, 2, "Tape <color:#FFB347>//line red</color> — répète pour les 4 côtés.");
         Msg.blank(player);
     }
 
-    public void onLinesValidated(Player player) {
-        TutorialSession session = sessions.get(player.getUniqueId());
-        if (session == null) return;
-
+    private void advanceToStack(Player player, TutorialSession session) {
+        stopParticles(player);
         session.setStep(TutorialStep.WORLDEDIT_STACK);
         startSelectionParticles(player);
 
@@ -192,11 +228,17 @@ public final class TutorialManager {
         Msg.info(player, "Les particules <color:#74C0FC>bleues</color> indiquent tes deux coins de sélection WorldEdit.");
         Msg.blank(player);
         Msg.step(player, 1, 3, "Tape <color:#FFB347>//wand</color> pour recevoir la hache de sélection.");
-        Msg.step(player, 2, 3, "Clic gauche sur le coin <color:#74C0FC>bleu Nord-Ouest</color>, clic droit sur le <color:#74C0FC>Sud-Est</color>.");
-        Msg.step(player, 3, 3, "Exécute <color:#FFB347>//stack 3 up</color> pour copier la structure 3 fois vers le haut.");
+        Msg.step(player, 2, 3, "Clic gauche coin <color:#74C0FC>Nord-Ouest</color>, clic droit coin <color:#74C0FC>Sud-Est</color>.");
+        Msg.step(player, 3, 3, "Exécute <color:#FFB347>//stack 3 up</color> pour copier la structure vers le haut.");
         Msg.blank(player);
         Msg.tip(player, "C'est comme ça qu'on monte les murs d'un bâtiment sur BTE.");
         Msg.blank(player);
+    }
+
+    public void onLinesValidated(Player player) {
+        TutorialSession session = sessions.get(player.getUniqueId());
+        if (session == null) return;
+        advanceToStack(player, session);
     }
 
     public void onStackDetected(Player player) {
@@ -205,6 +247,8 @@ public final class TutorialManager {
 
         stopParticles(player);
         session.setStep(TutorialStep.COMPLETED);
+
+        cleanupZone(player);
 
         Msg.blank(player);
         Msg.header(player, "Tutoriel terminé");
@@ -216,6 +260,21 @@ public final class TutorialManager {
         Msg.blank(player);
 
         sessions.remove(player.getUniqueId());
+    }
+
+    private void cleanupZone(Player player) {
+        org.bukkit.World world = player.getWorld();
+
+        for (int x = (int) CLEANUP_MIN_X; x <= (int) CLEANUP_MAX_X; x++) {
+            for (int z = (int) CLEANUP_MIN_Z; z <= (int) CLEANUP_MAX_Z; z++) {
+                for (int y = CLEANUP_MIN_Y; y <= CLEANUP_MAX_Y; y++) {
+                    org.bukkit.block.Block block = world.getBlockAt(x, y, z);
+                    if (block.getType() == Material.RED_WOOL) {
+                        block.setType(Material.AIR);
+                    }
+                }
+            }
+        }
     }
 
     private void resetCorners(Player player, TutorialSession session) {
