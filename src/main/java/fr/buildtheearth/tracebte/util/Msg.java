@@ -118,4 +118,16 @@ public final class Msg {
                 .append(Component.text("  " + done + "/" + total, MUTED))
         );
     }
+
+    public static void lineProgress(Player p, int done, int total) {
+      StringBuilder bar = new StringBuilder();
+      for (int i = 0; i < total; i++) {
+         bar.append(i < done ? "◆" : "◇");
+      }
+      p.sendMessage(
+         Component.text("  Segments  ", MUTED)
+             .append(Component.text(bar.toString(), done == total ? MOSS : EMBER))
+             .append(Component.text("  " + done + "/" + total, MUTED))
+      );
+    }
 }
