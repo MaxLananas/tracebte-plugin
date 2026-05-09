@@ -3,7 +3,6 @@ package fr.buildtheearth.tracebte.listener;
 import fr.buildtheearth.tracebte.tutorial.TutorialManager;
 import fr.buildtheearth.tracebte.tutorial.TutorialSession;
 import fr.buildtheearth.tracebte.tutorial.TutorialStep;
-import fr.buildtheearth.tracebte.util.Geometry;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -37,7 +36,7 @@ public final class TpllListener implements Listener {
         TutorialSession session = manager.getSession(player);
         if (session == null) return;
 
-        String raw = event.getMessage().strip().toLowerCase();
+        String raw = event.getMessage().strip().toLowerCase().replaceAll("\\s+", " ");
 
         if (session.getStep() == TutorialStep.PLACING_CORNERS && raw.startsWith("/tpll")) {
             pendingTpll.put(player.getUniqueId(), true);
@@ -49,11 +48,8 @@ public final class TpllListener implements Listener {
             return;
         }
 
-        if (session.getStep() == TutorialStep.WORLDEDIT_STACK) {
-            String stripped = raw.replaceAll("\\s+", " ").strip();
-            if (stripped.startsWith("//stack") && stripped.contains("up")) {
-                scheduleStackValidation(player);
-            }
+        if (session.getStep() == TutorialStep.WORLDEDIT_STACK && raw.startsWith("//stack")) {
+            scheduleStackValidation(player);
         }
     }
 
@@ -78,22 +74,9 @@ public final class TpllListener implements Listener {
             public void run() {
                 TutorialSession session = manager.getSession(player);
                 if (session == null || session.getStep() != TutorialStep.WORLDEDIT_STACK) return;
-
-                boolean valid = Geometry.checkStackedUp(
-                    player.getWorld(),
-                    TutorialManager.WE_SELECTION,
-                    3,
-                    Material.RED_WOOL
-                );
-
-                if (valid) {
-                    manager.onStackDetected(player);
-                } else {
-                    fr.buildtheearth.tracebte.util.Msg.warn(player,
-                        "Le stack n'a pas fonctionné comme attendu — vérifie ta sélection et réessaie.");
-                }
+                manager.onStackDetected(player);
             }
-        }.runTaskLater(plugin, 15L);
+        }.runTaskLater(plugin, 20L);
     }
 
     private void scheduleBlockScan(Player player, Location arrival) {
