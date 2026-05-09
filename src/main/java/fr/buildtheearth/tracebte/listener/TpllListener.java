@@ -3,6 +3,7 @@ package fr.buildtheearth.tracebte.listener;
 import fr.buildtheearth.tracebte.tutorial.TutorialManager;
 import fr.buildtheearth.tracebte.tutorial.TutorialSession;
 import fr.buildtheearth.tracebte.tutorial.TutorialStep;
+import fr.buildtheearth.tracebte.util.Geometry;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -45,6 +46,14 @@ public final class TpllListener implements Listener {
 
         if (session.getStep() == TutorialStep.DRAWING_LINES && raw.startsWith("//line")) {
             manager.onLineCommand(player);
+            return;
+        }
+
+        if (session.getStep() == TutorialStep.WORLDEDIT_STACK) {
+            String stripped = raw.replaceAll("\\s+", " ").strip();
+            if (stripped.startsWith("//stack") && stripped.contains("up")) {
+                scheduleStackValidation(player);
+            }
         }
     }
 
@@ -61,6 +70,30 @@ public final class TpllListener implements Listener {
         Location destination = event.getTo();
         manager.onTpll(player, destination);
         scheduleBlockScan(player, destination);
+    }
+
+    private void scheduleStackValidation(Player player) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                TutorialSession session = manager.getSession(player);
+                if (session == null || session.getStep() != TutorialStep.WORLDEDIT_STACK) return;
+
+                boolean valid = Geometry.checkStackedUp(
+                    player.getWorld(),
+                    TutorialManager.WE_SELECTION,
+                    3,
+                    Material.RED_WOOL
+                );
+
+                if (valid) {
+                    manager.onStackDetected(player);
+                } else {
+                    fr.buildtheearth.tracebte.util.Msg.warn(player,
+                        "Le stack n'a pas fonctionné comme attendu — vérifie ta sélection et réessaie.");
+                }
+            }
+        }.runTaskLater(plugin, 15L);
     }
 
     private void scheduleBlockScan(Player player, Location arrival) {
