@@ -57,10 +57,22 @@ public final class TutorialManager {
         Bukkit.getScheduler().runTaskLater(plugin, () -> sendMapsInstructions(player), 90L);
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!hasSession(player)) return;
             session.setStep(TutorialStep.PLACING_CORNERS);
             startCornerParticles(player);
             sendCornerInstructions(player);
-        }, 180L);
+        }, 160L);
+    }
+
+    public void stopTutorial(Player player) {
+        if (!hasSession(player)) {
+            Msg.warn(player, "Tu n'es pas en train de faire le tutoriel.");
+            return;
+        }
+        removeSession(player);
+        Msg.blank(player);
+        Msg.info(player, "Tutoriel interrompu. Tape <color:#FFB347>/tuto</color> pour recommencer.");
+        Msg.blank(player);
     }
 
     private void teleportToStart(Player player) {
@@ -73,6 +85,7 @@ public final class TutorialManager {
     }
 
     private void sendMapsInstructions(Player player) {
+        if (!hasSession(player)) return;
         Msg.header(player, "Comment trouver les coordonnées");
         Msg.info(player, "Sur BTE, on trace les bâtiments d'après leurs vraies coordonnées GPS.");
         Msg.blank(player);
@@ -107,9 +120,6 @@ public final class TutorialManager {
 
         session.incrementTpll();
 
-        plugin.getLogger().info("[TraceBTE] tpllCount=" + session.getTpllCount()
-            + " pos=" + destination.getX() + "/" + destination.getZ());
-
         double dx = destination.getX() - ZONE_CENTER_X;
         double dz = destination.getZ() - ZONE_CENTER_Z;
         double dist = Math.sqrt(dx * dx + dz * dz);
@@ -120,6 +130,7 @@ public final class TutorialManager {
             Msg.tip(player, "Retourne sur Google Maps et vérifie que tu cliques bien sur la bonne maison.");
             Msg.blank(player);
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!hasSession(player)) return;
                 teleportToStart(player);
                 Msg.info(player, "On repart du début.");
             }, 60L);
@@ -130,19 +141,9 @@ public final class TutorialManager {
         TutorialSession session = sessions.get(player.getUniqueId());
         if (session == null || session.getStep() != TutorialStep.PLACING_CORNERS) return;
 
-        plugin.getLogger().info("[TraceBTE] Bloc posé par " + player.getName()
-            + " en " + location.getX() + " / " + location.getZ());
-
         int cornerIndex = Geometry.findNearestCorner(location, CORNERS, CORNER_TOLERANCE);
 
         if (cornerIndex == -1) {
-            plugin.getLogger().info("[TraceBTE] Aucun coin trouvé à proximité (tolérance=" + CORNER_TOLERANCE + ")");
-            for (int i = 0; i < CORNERS.length; i++) {
-                double dx = location.getX() - CORNERS[i][0];
-                double dz = location.getZ() - CORNERS[i][2];
-                double dist = Math.sqrt(dx * dx + dz * dz);
-                plugin.getLogger().info("[TraceBTE]   coin[" + i + "] distance=" + String.format("%.2f", dist));
-            }
             Msg.warn(player, "Ce coin n'est pas reconnu — téléporte-toi d'abord avec <color:#FFB347>/tpll</color>.");
             return;
         }
@@ -158,9 +159,6 @@ public final class TutorialManager {
         Msg.success(player, "Coin validé !");
         Msg.cornerProgress(player, session.getValidatedCorners().size(), 4);
         Msg.blank(player);
-
-        plugin.getLogger().info("[TraceBTE] Coin " + cornerIndex + " validé. Total="
-            + session.getValidatedCorners().size() + " tpllCount=" + session.getTpllCount());
 
         if (session.allCornersPlaced()) {
             if (session.getTpllCount() < 4) {
@@ -231,6 +229,7 @@ public final class TutorialManager {
         session.getValidatedCorners().clear();
         session.setStep(TutorialStep.PLACING_CORNERS);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!hasSession(player)) return;
             startCornerParticles(player);
             sendCornerInstructions(player);
         }, 40L);
