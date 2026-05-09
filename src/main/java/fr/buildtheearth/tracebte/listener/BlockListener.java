@@ -4,6 +4,7 @@ import fr.buildtheearth.tracebte.TraceBTE;
 import fr.buildtheearth.tracebte.tutorial.TutorialManager;
 import fr.buildtheearth.tracebte.tutorial.TutorialSession;
 import fr.buildtheearth.tracebte.tutorial.TutorialStep;
+import fr.buildtheearth.tracebte.util.Geometry;
 import fr.buildtheearth.tracebte.util.Msg;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -21,7 +22,7 @@ public final class BlockListener implements Listener {
 
     private final TutorialManager manager;
     private final TraceBTE plugin;
-    private final Set<UUID> lineCheckCooldown = new HashSet<>();
+    private final Set<UUID> lineCheckCooldown  = new HashSet<>();
     private final Set<UUID> stackCheckCooldown = new HashSet<>();
 
     public BlockListener(TutorialManager manager, TraceBTE plugin) {
@@ -38,7 +39,11 @@ public final class BlockListener implements Listener {
         TutorialStep step = session.getStep();
 
         if (step == TutorialStep.PLACING_CORNERS) {
-            handleCornerPlacement(player, event);
+            if (event.getBlock().getType() != Material.RED_WOOL) {
+                Msg.warn(player, "Pose de la <color:#FF6B6B>laine rouge</color> sur ce coin.");
+                return;
+            }
+            manager.onBlockPlace(player, event.getBlock().getLocation());
             return;
         }
 
@@ -50,14 +55,6 @@ public final class BlockListener implements Listener {
         if (step == TutorialStep.WORLDEDIT_STACK) {
             scheduleStackCheck(player);
         }
-    }
-
-    private void handleCornerPlacement(Player player, BlockPlaceEvent event) {
-        if (event.getBlock().getType() != Material.RED_WOOL) {
-            Msg.warn(player, "Pose de la <color:#FF6B6B>laine rouge</color> sur ce coin.");
-            return;
-        }
-        manager.onBlockPlace(player, event.getBlock().getLocation());
     }
 
     private void scheduleLineCheck(Player player) {
@@ -72,7 +69,7 @@ public final class BlockListener implements Listener {
                 TutorialSession session = manager.getSession(player);
                 if (session == null || session.getStep() != TutorialStep.DRAWING_LINES) return;
 
-                boolean valid = fr.buildtheearth.tracebte.util.Geometry.checkAllLinesExist(
+                boolean valid = Geometry.checkAllLinesExist(
                     player.getWorld(),
                     TutorialManager.CORNERS,
                     Material.RED_WOOL
@@ -95,7 +92,7 @@ public final class BlockListener implements Listener {
                 TutorialSession session = manager.getSession(player);
                 if (session == null || session.getStep() != TutorialStep.WORLDEDIT_STACK) return;
 
-                boolean stacked = fr.buildtheearth.tracebte.util.Geometry.checkStackedUp(
+                boolean stacked = Geometry.checkStackedUp(
                     player.getWorld(),
                     TutorialManager.WE_SELECTION,
                     3,
