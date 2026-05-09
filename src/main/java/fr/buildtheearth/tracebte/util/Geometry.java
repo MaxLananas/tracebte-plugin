@@ -13,8 +13,7 @@ public final class Geometry {
         for (int i = 0; i < corners.length; i++) {
             double dx = loc.getX() - corners[i][0];
             double dz = loc.getZ() - corners[i][2];
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist <= tolerance) return i;
+            if (Math.sqrt(dx * dx + dz * dz) <= tolerance) return i;
         }
         return -1;
     }
@@ -32,8 +31,7 @@ public final class Geometry {
             int bx = (int) Math.floor(from[0] + dx * t);
             int by = (int) Math.floor(from[1] + dy * t);
             int bz = (int) Math.floor(from[2] + dz * t);
-            Block block = world.getBlockAt(bx, by, bz);
-            if (block.getType() == expected) matched++;
+            if (world.getBlockAt(bx, by, bz).getType() == expected) matched++;
         }
 
         return matched >= steps * 0.6;
@@ -53,15 +51,28 @@ public final class Geometry {
         double maxX = Math.max(weSelection[0][0], weSelection[1][0]);
         double minZ = Math.min(weSelection[0][2], weSelection[1][2]);
         double maxZ = Math.max(weSelection[0][2], weSelection[1][2]);
-        double baseY = weSelection[0][1];
+        int baseY = (int) weSelection[0][1];
+
+        double[][] samplePoints = {
+            {minX, minZ},
+            {maxX, minZ},
+            {minX, maxZ},
+            {maxX, maxZ},
+            {(minX + maxX) / 2, (minZ + maxZ) / 2}
+        };
 
         for (int s = 1; s <= stackCount; s++) {
-            int y = (int) (baseY + s);
-            int sampleX = (int) ((minX + maxX) / 2);
-            int sampleZ = (int) ((minZ + maxZ) / 2);
-            Block block = world.getBlockAt(sampleX, y, sampleZ);
-            if (block.getType() == Material.AIR) return false;
+            int y = baseY + s;
+            int hits = 0;
+
+            for (double[] pt : samplePoints) {
+                Block block = world.getBlockAt((int) pt[0], y, (int) pt[1]);
+                if (block.getType() != Material.AIR) hits++;
+            }
+
+            if (hits < 2) return false;
         }
+
         return true;
     }
 }
