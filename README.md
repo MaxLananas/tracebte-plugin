@@ -11,8 +11,7 @@ Guides new players through the fundamentals of real-world building placement usi
 |------------|--------------|----------|
 | PaperMC    | 1.21.1+      | Required |
 | Java       | 21+          | Required |
-| WorldEdit  | 7.3.x        | Required |
-| BTE Tools  | Any          | Required |
+| FastAyncWorldEdit  | 2.14.x        | Required |
 
 ---
 
