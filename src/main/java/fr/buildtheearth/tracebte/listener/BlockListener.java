@@ -30,7 +30,7 @@ public final class BlockListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
         TutorialSession session = manager.getSession(player);
@@ -43,7 +43,7 @@ public final class BlockListener implements Listener {
                 Msg.warn(player, "Pose de la <color:#FF6B6B>laine rouge</color> sur ce coin.");
                 return;
             }
-            manager.onBlockPlace(player, event.getBlock().getLocation());
+            manager.onBlockDetected(player, event.getBlock().getLocation());
             return;
         }
 
