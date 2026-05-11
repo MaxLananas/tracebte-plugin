@@ -1,5 +1,7 @@
 # TraceBTE
 
+https://youtu.be/Is13qHO9umE?si=GsmELacfEHfKlDjK
+
 Interactive tracing tutorial plugin for BuildTheEarth France.  
 Guides new players through the fundamentals of real-world building placement using GPS coordinates, WorldEdit, and BTE projection tools.
 
